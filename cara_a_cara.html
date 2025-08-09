@@ -1,0 +1,397 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Cara a Cara - Mini</title>
+  <style>
+    :root{--gap:10px;--card-size:120px}
+    body{font-family:Inter, system-ui, -apple-system, Arial; margin:16px; background:#f7f7fb; color:#111}
+    h1{font-size:18px;margin:0 0 12px}
+    .tools{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:12px}
+    select,button{padding:8px 10px;border-radius:8px;border:1px solid #ddd;background:#fff;cursor:pointer}
+    .board{display:grid;gap:var(--gap);grid-template-columns:repeat(auto-fill,minmax(var(--card-size),1fr));}
+    .card{position:relative;background:#fff;border-radius:10px;overflow:hidden;box-shadow:0 6px 18px rgba(12,20,40,0.06);cursor:pointer;user-select:none}
+    .card img{width:100%;height:var(--card-size);object-fit:cover;display:block}
+    .card .name{padding:6px 8px;font-size:13px;text-align:center}
+    .card.eliminated{opacity:.28;filter:grayscale(40%);}
+    .card .x{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:44px;color:rgba(0,0,0,.4);pointer-events:none}
+    .controls-row{display:flex;gap:8px;align-items:center;margin-bottom:12px}
+    .secret-card{display:flex;gap:8px;align-items:center}
+    .secret-preview{width:86px;height:86px;border-radius:8px;overflow:hidden;background:#eee;display:flex;align-items:center;justify-content:center;font-weight:700}
+    .small{font-size:13px;color:#444}
+    .btn-ghost{background:transparent;border:1px dashed #ccc}
+    footer{margin-top:12px;font-size:13px;color:#666}
+    @media(min-width:700px){:root{--card-size:140px}}
+  </style>
+</head>
+<body>
+  <h1>Cara a Cara — versão rápida</h1>
+  <div class="tools">
+    <label class="small">Modo:
+      <select id="modeSelect">
+        <option value="real">Pessoas reais</option>
+        <option value="lol">League of Legends</option>
+      </select>
+    </label>
+    <button id="sortButton">Sortear personagens</button>
+    <button id="resetElim" class="btn-ghost">Resetar eliminações</button>
+    <button id="shuffleBoard" class="btn-ghost">Embaralhar visual</button>
+  </div>
+
+  <div class="controls-row">
+    <div class="secret-card">
+      <div>
+        <div class="small">Meu personagem</div>
+        <div class="secret-preview" id="myPreview">?</div>
+        <div style="margin-top:6px"><button id="toggleMy">Mostrar/Ocultar</button></div>
+      </div>
+    </div>
+    <div style="width:18px"></div>
+    <div class="secret-card">
+      <div>
+        <div class="small">Personagem do namorado</div>
+        <div class="secret-preview" id="theirPreview">?</div>
+        <div style="margin-top:6px"><button id="toggleTheir">Mostrar/Ocultar</button></div>
+      </div>
+    </div>
+  </div>
+
+  <div id="board" class="board"></div>
+
+  <footer>Clique em qualquer cartão para <strong>eliminar</strong> (escurecer). Substitua as listas no script pelas suas imagens/nomes reais quando quiser.</footer>
+
+  <script>
+    // Dados de exemplo — substitua pelos seus dados reais.
+    const realPeople = [
+      { nome: "Matheus", img: "" },
+      { nome: "Mika", img: "" },
+      { nome: "Dalva", img: "" },
+      { nome: "Silvana", img: "" },
+      { nome: "Luciano", img: "" },
+      { nome: "Mariana", img: "" },
+      { nome: "Davi", img: "" },
+      { nome: "Calvo do boa noite", img: "" },
+      { nome: "Vó regina", img: "" },
+      { nome: "Vó Sônia", img: "" },
+      { nome: "Alanzoca", img: "" },
+      { nome: "Arthur", img: "" },
+      { nome: "Celbit", img: "" },
+      { nome: "Felps", img: "" },
+      { nome: "Faker", img: "" },
+      { nome: "Bomba", img: "" },
+      { nome: "Nina", img: "" },
+      { nome: "Fernando", img: "" },
+      { nome: "Vitória", img: "" },
+      { nome: "Pezinho", img: "" },
+      { nome: "Auau", img: "" },
+      { nome: "WW", img: "" },
+      { nome: "Neco", img: "" },
+      { nome: "Camunga", img: "" },
+      { nome: "Esnoob", img: "" },
+      { nome: "Kami", img: "" },
+      { nome: "Ariane", img: "" },
+      { nome: "Filho do pai do Pedro", img: "" },
+      { nome: "Bolsonaro", img: "" },
+      { nome: "Lula", img: "" },
+      { nome: "Gabriel", img: "" },
+      { nome: "Ericka Hilton", img: "" },
+      { nome: "Nicolas Ferreira", img: "" },
+      { nome: "Wesley", img: "" }
+    ];
+
+    const lolChampions = [
+      { nome: "Aatrox", img: "" },
+      { nome: "Ahri", img: "" },
+      { nome: "Akali", img: "" },
+      { nome: "Akshan", img: "" },
+      { nome: "Alistar", img: "" },
+      { nome: "Ambessa", img: "" },
+      { nome: "Amumu", img: "" },
+      { nome: "Anivia", img: "" },
+      { nome: "Annie", img: "" },
+      { nome: "Aphelios", img: "" },
+      { nome: "Ashe", img: "" },
+      { nome: "Aurelion Sol", img: "" },
+      { nome: "Aurora", img: "" },
+      { nome: "Azir", img: "" },
+      { nome: "Bard", img: "" },
+      { nome: "Bel’Veth", img: "" },
+      { nome: "Blitzcrank", img: "" },
+      { nome: "Brand", img: "" },
+      { nome: "Braum", img: "" },
+      { nome: "Briar", img: "" },
+      { nome: "Caitlyn", img: "" },
+      { nome: "Camille", img: "" },
+      { nome: "Cassiopeia", img: "" },
+      { nome: "Cho’Gath", img: "" },
+      { nome: "Corki", img: "" },
+      { nome: "Darius", img: "" },
+      { nome: "Diana", img: "" },
+      { nome: "Dr. Mundo", img: "" },
+      { nome: "Draven", img: "" },
+      { nome: "Ekko", img: "" },
+      { nome: "Elise", img: "" },
+      { nome: "Evelynn", img: "" },
+      { nome: "Ezreal", img: "" },
+      { nome: "Fiddlesticks", img: "" },
+      { nome: "Fiora", img: "" },
+      { nome: "Fizz", img: "" },
+      { nome: "Galio", img: "" },
+      { nome: "Gangplank", img: "" },
+      { nome: "Garen", img: "" },
+      { nome: "Gnar", img: "" },
+      { nome: "Gragas", img: "" },
+      { nome: "Graves", img: "" },
+      { nome: "Gwen", img: "" },
+      { nome: "Hecarim", img: "" },
+      { nome: "Heimerdinger", img: "" },
+      { nome: "Hwei", img: "" },
+      { nome: "Illaoi", img: "" },
+      { nome: "Irelia", img: "" },
+      { nome: "Ivern", img: "" },
+      { nome: "Janna", img: "" },
+      { nome: "Jarvan IV", img: "" },
+      { nome: "Jax", img: "" },
+      { nome: "Jayce", img: "" },
+      { nome: "Jhin", img: "" },
+      { nome: "Jinx", img: "" },
+      { nome: "Kai’Sa", img: "" },
+      { nome: "Kalista", img: "" },
+      { nome: "Karma", img: "" },
+      { nome: "Karthus", img: "" },
+      { nome: "Kassadin", img: "" },
+      { nome: "Katarina", img: "" },
+      { nome: "Kayle", img: "" },
+      { nome: "Kayn", img: "" },
+      { nome: "Kennen", img: "" },
+      { nome: "Kha’Zix", img: "" },
+      { nome: "Kindred", img: "" },
+      { nome: "Kled", img: "" },
+      { nome: "Kog’Maw", img: "" },
+      { nome: "LeBlanc", img: "" },
+      { nome: "Lee Sin", img: "" },
+      { nome: "Leona", img: "" },
+      { nome: "Lillia", img: "" },
+      { nome: "Lissandra", img: "" },
+      { nome: "Lucian", img: "" },
+      { nome: "Lulu", img: "" },
+      { nome: "Lux", img: "" },
+      { nome: "Malphite", img: "" },
+      { nome: "Malzahar", img: "" },
+      { nome: "Maokai", img: "" },
+      { nome: "Master Yi", img: "" },
+      { nome: "Mel", img: "" },
+      { nome: "Milio", img: "" },
+      { nome: "Miss Fortune", img: "" },
+      { nome: "Mordekaiser", img: "" },
+      { nome: "Morgana", img: "" },
+      { nome: "Naafiri", img: "" },
+      { nome: "Nami", img: "" },
+      { nome: "Nasus", img: "" },
+      { nome: "Nautilus", img: "" },
+      { nome: "Neeko", img: "" },
+      { nome: "Nidalee", img: "" },
+      { nome: "Nilah", img: "" },
+      { nome: "Nocturne", img: "" },
+      { nome: "Nunu & Willump", img: "" },
+      { nome: "Olaf", img: "" },
+      { nome: "Orianna", img: "" },
+      { nome: "Ornn", img: "" },
+      { nome: "Pantheon", img: "" },
+      { nome: "Poppy", img: "" },
+      { nome: "Pyke", img: "" },
+      { nome: "Qiyana", img: "" },
+      { nome: "Quinn", img: "" },
+      { nome: "Rakan", img: "" },
+      { nome: "Rammus", img: "" },
+      { nome: "Rek’Sai", img: "" },
+      { nome: "Rell", img: "" },
+      { nome: "Renata Glasc", img: "" },
+      { nome: "Renekton", img: "" },
+      { nome: "Rengar", img: "" },
+      { nome: "Riven", img: "" },
+      { nome: "Rumble", img: "" },
+      { nome: "Ryze", img: "" },
+      { nome: "Samira", img: "" },
+      { nome: "Sejuani", img: "" },
+      { nome: "Senna", img: "" },
+      { nome: "Seraphine", img: "" },
+      { nome: "Sett", img: "" },
+      { nome: "Shaco", img: "" },
+      { nome: "Shen", img: "" },
+      { nome: "Shyvana", img: "" },
+      { nome: "Singed", img: "" },
+      { nome: "Sion", img: "" },
+      { nome: "Sivir", img: "" },
+      { nome: "Skarner", img: "" },
+      { nome: "Smolder", img: "" },
+      { nome: "Sona", img: "" },
+      { nome: "Soraka", img: "" },
+      { nome: "Swain", img: "" },
+      { nome: "Sylas", img: "" },
+      { nome: "Syndra", img: "" },
+      { nome: "Tahm Kench", img: "" },
+      { nome: "Taliyah", img: "" },
+      { nome: "Talon", img: "" },
+      { nome: "Taric", img: "" },
+      { nome: "Teemo", img: "" },
+      { nome: "Thresh", img: "" },
+      { nome: "Tristana", img: "" },
+      { nome: "Trundle", img: "" },
+      { nome: "Tryndamere", img: "" },
+      { nome: "Twisted Fate", img: "" },
+      { nome: "Twitch", img: "" },
+      { nome: "Udyr", img: "" },
+      { nome: "Urgot", img: "" },
+      { nome: "Varus", img: "" },
+      { nome: "Vayne", img: "" },
+      { nome: "Veigar", img: "" },
+      { nome: "Vel’Koz", img: "" },
+      { nome: "Vex", img: "" },
+      { nome: "Vi", img: "" },
+      { nome: "Viego", img: "" },
+      { nome: "Viktor", img: "" },
+      { nome: "Vladimir", img: "" },
+      { nome: "Volibear", img: "" },
+      { nome: "Warwick", img: "" },
+      { nome: "Wukong", img: "" },
+      { nome: "Xayah", img: "" },
+      { nome: "Xerath", img: "" },
+      { nome: "Xin Zhao", img: "" },
+      { nome: "Yasuo", img: "" },
+      { nome: "Yone", img: "" },
+      { nome: "Yorick", img: "" },
+      { nome: "Yuumi", img: "" },
+      { nome: "Yunara", img: "" },
+      { nome: "Zac", img: "" },
+      { nome: "Zed", img: "" },
+      { nome: "Zeri", img: "" },
+      { nome: "Ziggs", img: "" },
+      { nome: "Zilean", img: "" },
+      { nome: "Zoe", img: "" },
+      { nome: "Zyra", img: "" }
+    ];
+
+    // --- util: cria dataURL SVG com inicial (fallback quando img não fornecida) ---
+    function svgDataUrl(text){
+      const bg = '#dfe7ff';
+      const color = '#123';
+      const svg = `<svg xmlns='http://www.w3.org/2000/svg' width='300' height='300'><rect width='100%' height='100%' fill='${bg}'/><text x='50%' y='50%' font-size='80' text-anchor='middle' fill='${color}' dy='.35em' font-family='Arial, sans-serif'>${text}</text></svg>`;
+      return 'data:image/svg+xml;utf8,' + encodeURIComponent(svg);
+    }
+
+    // Estado
+    let mode = 'real';
+    let boardList = [];
+    let mySecret = null;
+    let theirSecret = null;
+    const boardEl = document.getElementById('board');
+    const modeSelect = document.getElementById('modeSelect');
+    const sortButton = document.getElementById('sortButton');
+    const resetElim = document.getElementById('resetElim');
+    const shuffleBoard = document.getElementById('shuffleBoard');
+    const myPreview = document.getElementById('myPreview');
+    const theirPreview = document.getElementById('theirPreview');
+    const toggleMy = document.getElementById('toggleMy');
+    const toggleTheir = document.getElementById('toggleTheir');
+
+    function loadBoard(){
+      mode = modeSelect.value;
+      boardList = (mode === 'real') ? realPeople.slice() : lolChampions.slice();
+      renderBoard();
+      clearSecretsPreview();
+    }
+
+    function renderBoard(){
+      boardEl.innerHTML = '';
+      boardList.forEach((p, idx)=>{
+        const card = document.createElement('div');
+        card.className = 'card';
+        card.dataset.idx = idx;
+
+        const img = document.createElement('img');
+        img.alt = p.nome;
+        img.src = p.img || svgDataUrl(p.nome[0] || '?');
+
+        const name = document.createElement('div');
+        name.className = 'name';
+        name.textContent = p.nome;
+
+        card.appendChild(img);
+        card.appendChild(name);
+
+        card.addEventListener('click', ()=>{
+          card.classList.toggle('eliminated');
+          // toggle X overlay
+          if(card.classList.contains('eliminated')){
+            if(!card.querySelector('.x')){
+              const x = document.createElement('div'); x.className='x'; x.textContent='✕'; card.appendChild(x);
+            }
+          } else {
+            const x = card.querySelector('.x'); if(x) x.remove();
+          }
+        });
+
+        boardEl.appendChild(card);
+      });
+    }
+
+    function randomPick(list){
+      if(!list || list.length===0) return null;
+      return list[Math.floor(Math.random()*list.length)];
+    }
+
+    function sortear(){
+      const list = (mode === 'real') ? realPeople : lolChampions;
+      mySecret = randomPick(list);
+      theirSecret = randomPick(list.filter(x => x.nome !== mySecret.nome));
+      // atualizar previews inicialmente ocultos
+      myPreview.innerHTML = '<img src="'+(mySecret.img||svgDataUrl(mySecret.nome[0]))+'" style="width:100%;height:100%;object-fit:cover" alt="me">';
+      myPreview.dataset.visible = 'false';
+      myPreview.style.filter = 'blur(8px)';
+      myPreview.style.opacity = '0.9';
+
+      theirPreview.innerHTML = '<img src="'+(theirSecret.img||svgDataUrl(theirSecret.nome[0]))+'" style="width:100%;height:100%;object-fit:cover" alt="them">';
+      theirPreview.dataset.visible = 'false';
+      theirPreview.style.filter = 'blur(8px)';
+      theirPreview.style.opacity = '0.9';
+
+      // opcional: embaralha visualmente o tabuleiro para disfarçar
+      renderBoard();
+    }
+
+    function clearSecretsPreview(){
+      mySecret = null; theirSecret = null;
+      myPreview.textContent='?'; theirPreview.textContent='?';
+      myPreview.style.filter='none'; theirPreview.style.filter='none';
+    }
+
+    toggleMy.addEventListener('click', ()=>{
+      if(!mySecret) return alert('Primeiro clique em Sortear personagens.');
+      const visible = myPreview.dataset.visible === 'true';
+      if(visible){ myPreview.style.filter='blur(8px)'; myPreview.dataset.visible='false'; }
+      else { myPreview.style.filter='none'; myPreview.dataset.visible='true'; }
+    });
+    toggleTheir.addEventListener('click', ()=>{
+      if(!theirSecret) return alert('Primeiro clique em Sortear personagens.');
+      const visible = theirPreview.dataset.visible === 'true';
+      if(visible){ theirPreview.style.filter='blur(8px)'; theirPreview.dataset.visible='false'; }
+      else { theirPreview.style.filter='none'; theirPreview.dataset.visible='true'; }
+    });
+
+    sortButton.addEventListener('click', ()=>{ sortear(); });
+    modeSelect.addEventListener('change', ()=>{ loadBoard(); });
+    resetElim.addEventListener('click', ()=>{ document.querySelectorAll('.card.eliminated').forEach(c=>{ c.classList.remove('eliminated'); const x=c.querySelector('.x'); if(x) x.remove(); }); });
+    shuffleBoard.addEventListener('click', ()=>{ // embaralha array visual e re-render
+      for(let i=boardList.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [boardList[i],boardList[j]]=[boardList[j],boardList[i]] }
+      renderBoard();
+    });
+
+    // inicializa
+    loadBoard();
+
+    // DICA: para usar fotos reais, substitua campos img nas listas por caminhos locais (ex: 'imgs/ana.jpg')
+  </script>
+</body>
+</html>
